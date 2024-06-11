@@ -112,3 +112,42 @@ nsys-jax [nsys profile options] -- [your application]
 ./install.sh
 ```
 It will launch a jupyter notebook with various analysis, which also includes the compilation breakdown
+
+
+# CSV format
+You might want to write your own script to parse the NVTX marker results. The csv file dump of `nsys stats --report nvtx_pushpop_trace --input output.nsys-rep` usually looks like this:
+```csv
+Start (ns),End (ns),Duration (ns),DurChild (ns),DurNonChild (ns),Name,PID,TID,Lvl,NumChild,RangeId,ParentId,RangeStack,NameTree
+129466419083,129469614334,3195251,0,3195251,"TSL:XlaDumpHloModule:#module=jit__psum,program_id=0#",2286673,2286673,0,0,125597,,:125597,"TSL:XlaDumpHloModule:#module=jit__psum,program_id=0#"
+129469619302,129914331259,444711957,169945965,274765992,"TSL:XlaCompile:#module=jit__psum,program_id=0#",2286673,2286673,0,22,125601,,:125601,"TSL:XlaCompile:#module=jit__psum,program_id=0#"
+```
+![example](./example.png)
+
+* Start (ns): start time
+* End (ns): end time
+* Duration (ns): duration time
+  * End - Start
+* DurChild (ns): time spent in child range
+* DurNonChild (ns): time spent in non child range
+  * Duration - DurChild
+  * Assuming A has Duration of 100, B has Duration of 40, C has Duration of 50, then DurNonChild for A would be 10, DurChild for A would be 90.
+* Name: Assigned name of the current range
+* PID: process id
+* TID: thread id
+* Lvl: nested level of the current range
+  * For A, the Lvl would be 0
+  * For D, the Lvl would be 2
+* RangeId: unique id of the current range
+* ParentId: unique id the parent range
+* RangeStack: stacks of the nested ranges
+  * For C, the RangeStack would be 1:3
+  * For D, the RangeStack would be 1:2:4
+
+So for the above example, the csv file would look like this:
+```csv
+Start (ns),End (ns),Duration (ns),DurChild (ns),DurNonChild (ns),Name,PID,TID,Lvl,NumChild,RangeId,ParentId,RangeStack
+0,100,100,90,10,"A",12345,12345,0,2,1,,:1
+0,40,40,30,10,"B",12345,12345,1,1,2,1,1:2
+45,95,50,0,50,"C",12345,12345,1,0,3,1,1:3
+5,35,30,0,30,"D",12345,12345,2,0,4,2,1:2:4
+```
